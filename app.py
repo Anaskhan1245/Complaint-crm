@@ -63,7 +63,7 @@ if menu == "📝 Register Complaint":
         with col2:
             address = st.text_input("Pura Address (Full Address) *")
             issue = st.selectbox("Kya Problem Hai? (Select Issue) *", 
-                                 ["AC Cooling Issue", "Washing Machine Noise", "Refrigerator Not Working", "RO Water Filter", "Other"])
+                                 ["Bed", "Almirah", "cooler", "Shoe Rack", "Office Table", "Dressing Table" ,"Chair", "Sofa set", "Other"])
             
         description = st.text_area("Problem ko detail me batayen (Description)")
         
