@@ -168,10 +168,9 @@ if menu == "📝 Register Complaint":
 # PAGE 2: SEARCH & UPDATE STATUS
 # -----------------------------------------------------
 elif menu == "🔍 Search & Update Status":
-    st.title("🔍 Search Complaint")
-    st.markdown("Customer ki **Complaint ID** daalkar uski details dekhein aur status update karein.")
+    st.title("🔍 Search & Manage Complaint")
+    st.markdown("Customer ki **Complaint ID** daalkar uski details dekhein, status update karein, ya use delete karein.")
     
-    # Session state setup
     if 'search_result' not in st.session_state:
         st.session_state.search_result = None
 
@@ -181,13 +180,11 @@ elif menu == "🔍 Search & Update Status":
         if not search_id:
             st.warning("Kripya ID daalein.")
         else:
-            # File read karke search karna
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
             
             found = False
             for item in data:
-                # ID match kar rahe hain (case-insensitive)
                 if item.get('id', '').strip().upper() == search_id.strip().upper():
                     st.session_state.search_result = item
                     found = True
@@ -197,14 +194,12 @@ elif menu == "🔍 Search & Update Status":
                 st.session_state.search_result = None
                 st.error(f"❌ '{search_id}' naam ki koi complaint nahi mili!")
 
-    # Agar complaint mil gayi hai, tab ye section dikhega
     if st.session_state.search_result:
         comp = st.session_state.search_result
         
         st.markdown("---")
         st.subheader("📋 Complaint Details")
         
-        # Display data in columns for better look
         col1, col2 = st.columns(2)
         with col1:
             st.write(f"**Complaint ID:** {comp['id']}")
@@ -217,33 +212,45 @@ elif menu == "🔍 Search & Update Status":
             st.write(f"**Description:** {comp['description']}")
             st.write(f"**Current Status:** {comp['status']}")
             
-        # Status update karne ka dropdown
-        st.markdown("### ⚙️ Update Status")
+        st.markdown("### ⚙️ Manage Complaint")
         
-        # Determine current index for selectbox
         status_options = ["Pending 🔴", "Resolved ✅"]
-        current_index = 0 if "Pending" in comp['status'] else 1
+        current_index = 0 if "Pending" in comp.get('status', 'Pending 🔴') else 1
         
         new_status = st.selectbox("Is complaint ka naya status chunein:", status_options, index=current_index)
         
-    if st.button("Update Status & Save"):
-            # Update logic
-            with open(DATA_FILE, 'r') as f:
-                all_data = json.load(f)
-            
-            # Find the specific complaint and update its status
-            for idx, item in enumerate(all_data):
-                if item['id'] == comp['id']:
-                    all_data[idx]['status'] = new_status
-                    st.session_state.search_result['status'] = new_status 
-                    break
+        # Dono buttons ko aamne-saamne dikhane ke liye columns banaye hain
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            if st.button("Update Status & Save"):
+                with open(DATA_FILE, 'r') as f:
+                    all_data = json.load(f)
+                
+                for idx, item in enumerate(all_data):
+                    if item['id'] == comp['id']:
+                        all_data[idx]['status'] = new_status
+                        st.session_state.search_result['status'] = new_status 
+                        break
+                        
+                with open(DATA_FILE, 'w') as f:
+                    json.dump(all_data, f, indent=4)
                     
-            # Save back to JSON file
-            with open(DATA_FILE, 'w') as f:
-                json.dump(all_data, f, indent=4)
-            
-            # YAHAN DHYAN DEIN: ye line theek 'with open' ke niche (barabar) honi chahiye
-            st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
+                st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
+
+        with col4:
+            if st.button("🗑️ Delete Complaint"):
+                with open(DATA_FILE, 'r') as f:
+                    all_data = json.load(f)
+                
+                # Naya list banayenge jisme search ki hui ID nahi hogi (yani wo delete ho jayegi)
+                updated_data = [item for item in all_data if item['id'] != comp['id']]
+                
+                with open(DATA_FILE, 'w') as f:
+                    json.dump(updated_data, f, indent=4)
+                    
+                st.session_state.search_result = None
+                st.success(f"🗑️ Complaint **{comp['id']}** hamesha ke liye delete ho gayi hai! Page refresh kar lein.")
 
 
             # -----------------------------------------------------
