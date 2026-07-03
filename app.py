@@ -72,9 +72,7 @@ def generate_complaint_id():
 st.set_page_config(page_title="Complaint CRM", page_icon="🛠️", layout="wide")
 
 # Sidebar for Navigation
-st.sidebar.title("Navigation")
-menu = st.sidebar.radio("Kripya ek option chunein:", ["📝 Register Complaint", "🔍 Search & Update Status"])
-st.sidebar.markdown("---")
+menu = st.sidebar.radio("Kripya ek option chunein:", ["📝 Register Complaint", "🔍 Search & Update Status", "📊 View All Record"])
 
 # -----------------------------------------------------
 # PAGE 1: REGISTER COMPLAINT
@@ -243,5 +241,22 @@ elif menu == "🔍 Search & Update Status":
             # Save back to JSON file
             with open(DATA_FILE, 'w') as f:
                 json.dump(all_data, f, indent=4)
-                
+
+
+            # -----------------------------------------------------
+# PAGE 3: VIEW ALL RECORDS
+# -----------------------------------------------------
+elif menu == "📊 View All Record":
+    st.title("📊 All Complaints Record")
+    st.markdown("Yahan aap saari registered complaints ek sath ek table me dekh sakte hain.")
+    
+    # JSON file se data read karna
+    with open(DATA_FILE, 'r') as f:
+        data = json.load(f)
+        
+    if not data:
+        st.info("Abhi tak koi complaint register nahi hui hai.")
+    else:
+        # Data ko sundar Table/Excel format me dikhana
+        st.dataframe(data, use_container_width=True)
             st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
