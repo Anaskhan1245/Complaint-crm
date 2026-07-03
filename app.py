@@ -6,9 +6,16 @@ import random
 from datetime import datetime
 from twilio.rest import Client
 
+# ==========================================
+# 1. SETUP & CONFIGURATION
+# ==========================================
+# Streamlit secrets se ID aur Password lena
 TWILIO_ACCOUNT_SID = st.secrets["TWILIO_ACCOUNT_SID"]
 TWILIO_AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
 IMGBB_API_KEY = st.secrets["IMGBB_API_KEY"]
+
+# YE WALI LINE MISSING HAI, ISEY WAPAS JODEIN:
+TWILIO_WHATSAPP_NUMBER = 'whatsapp:+14155238886'
 
 DATA_FILE = 'complaints.json'
 UPLOAD_FOLDER = 'uploaded_media'
