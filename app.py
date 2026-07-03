@@ -7,6 +7,19 @@ from datetime import datetime
 from twilio.rest import Client
 
 # ==========================================
+# 0. HIDE STREAMLIT WATERMARKS & GITHUB ICON
+# ==========================================
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            [data-testid="stToolbar"] {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# ==========================================
 # SIDEBAR & ADMIN LOGIN (SECURITY LOCK)
 # ==========================================
 st.sidebar.title("⚙️ Admin Panel")
