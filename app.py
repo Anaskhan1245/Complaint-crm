@@ -38,7 +38,7 @@ with st.sidebar.expander("🔐 Staff / Admin Login"):
     admin_pin = st.text_input("Enter PIN to unlock records", type="password")
 
 # Agar PIN 1234 hai, toh saare option khulenge, warna sirf Registration dikhega
-is_admin = (admin_pin == "1234") 
+is_admin = (admin_pin == "989761") 
 
 if is_admin:
     st.sidebar.success("✅ Admin Access Granted")
