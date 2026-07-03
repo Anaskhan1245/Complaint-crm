@@ -122,7 +122,7 @@ if menu == "📝 Register Complaint":
                 "serviceman_mobile": fixed_serviceman_number
             }
             
-            with open(DATA_FILE, 'r+') as f:
+            with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
                 data.append(complaint_data)
                 f.seek(0)
