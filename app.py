@@ -1,4 +1,15 @@
 import streamlit as st
+
+st.markdown("""
+    <style>
+    /* Sabhi footers aur menus ko hamesha ke liye hide karna */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stBottomBlock"] {display: none;}
+    </style>
+""", unsafe_allow_html=True)
+
 import json
 import os
 import requests
