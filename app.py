@@ -33,6 +33,12 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # ==========================================
 # SIDEBAR & ADMIN LOGIN (SECURITY LOCK)
 # ==========================================
+# Nayi Complaint ID banane wala function
+def generate_complaint_id():
+    import random
+    return f"CMP-{random.randint(100000, 999999)}"
+
+
 st.sidebar.title("⚙️ Admin Panel")
 with st.sidebar.expander("🔐 Staff / Admin Login"):
     admin_pin = st.text_input("Enter PIN to unlock records", type="password")
