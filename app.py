@@ -226,7 +226,7 @@ elif menu == "🔍 Search & Update Status":
         
         new_status = st.selectbox("Is complaint ka naya status chunein:", status_options, index=current_index)
         
-        if st.button("Update Status & Save"):
+    if st.button("Update Status & Save"):
             # Update logic
             with open(DATA_FILE, 'r') as f:
                 all_data = json.load(f)
@@ -235,12 +235,15 @@ elif menu == "🔍 Search & Update Status":
             for idx, item in enumerate(all_data):
                 if item['id'] == comp['id']:
                     all_data[idx]['status'] = new_status
-                    st.session_state.search_result['status'] = new_status # Update live screen
+                    st.session_state.search_result['status'] = new_status 
                     break
                     
             # Save back to JSON file
             with open(DATA_FILE, 'w') as f:
                 json.dump(all_data, f, indent=4)
+            
+            # YAHAN DHYAN DEIN: ye line theek 'with open' ke niche (barabar) honi chahiye
+            st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
 
 
             # -----------------------------------------------------
@@ -259,4 +262,8 @@ elif menu == "📊 View All Record":
     else:
         # Data ko sundar Table/Excel format me dikhana
         st.dataframe(data, use_container_width=True)
-            st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
+        
+        
+        
+        
+        st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
