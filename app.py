@@ -1,49 +1,56 @@
 import streamlit as st
+import json
+import os
+import random
+from datetime import datetime
 
-st.markdown("""
+# ==========================================
+# 0. INITIAL SETUP & MISSING VARIABLES
+# ==========================================
+DATA_FILE = "complaints.json"
+UPLOAD_FOLDER = "uploaded_photos"
+
+# Agar folder nahi hai toh bana lo
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+# Agar data file nahi hai toh empty list ke sath bana lo
+if not os.path.exists(DATA_FILE):
+    with open(DATA_FILE, 'w') as f:
+        json.dump([], f)
+
+# Dummy Functions for Missing Logic (Yahan apni asli API daalein)
+def upload_image_to_internet(local_path):
+    return f"https://example.com/{os.path.basename(local_path)}"
+
+def send_whatsapp_message(number, message, images=None):
+    # Yahan apni Twilio/WhatsApp logic daalein
+    return True, "Message sent successfully"
+
+# ==========================================
+# 1. HIDE STREAMLIT WATERMARKS
+# ==========================================
+hide_st_style = """
     <style>
-    /* Sabhi footers aur menus ko hamesha ke liye hide karna */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
+    [data-testid="stToolbar"] {visibility: hidden;}
     [data-testid="stBottomBlock"] {display: none;}
     </style>
-""", unsafe_allow_html=True)
-
-import json
-import os
-import requests
-import random
-from datetime import datetime
-from twilio.rest import Client
-
-# ==========================================
-# 0. HIDE STREAMLIT WATERMARKS & GITHUB ICON
-# ==========================================
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            [data-testid="stToolbar"] {visibility: hidden;}
-            </style>
-            """
+"""
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # ==========================================
-# SIDEBAR & ADMIN LOGIN (SECURITY LOCK)
+# 2. SIDEBAR & ADMIN LOGIN
 # ==========================================
-# Nayi Complaint ID banane wala function
 def generate_complaint_id():
-    import random
     return f"CMP-{random.randint(100000, 999999)}"
-
 
 st.sidebar.title("⚙️ Admin Panel")
 with st.sidebar.expander("🔐 Staff / Admin Login"):
     admin_pin = st.text_input("Enter PIN to unlock records", type="password")
 
-# Agar PIN 1234 hai, toh saare option khulenge, warna sirf Registration dikhega
 is_admin = (admin_pin == "989761") 
 
 if is_admin:
@@ -52,7 +59,6 @@ if is_admin:
 else:
     st.sidebar.info("Customer Mode: Sirf complaint darj kar sakte hain.")
     menu = "📝 Register Complaint"
-
 
 # -----------------------------------------------------
 # PAGE 1: REGISTER COMPLAINT (For Customers)
@@ -73,7 +79,6 @@ if menu == "📝 Register Complaint":
             
         description = st.text_area("Problem ko detail me batayen (Description)")
         
-        # Multiple photo upload (Max 10)
         st.markdown("📸 **Photos (Optional - Max 10)**")
         uploaded_files = st.file_uploader("Kharab product ki photo upload karein", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
         
@@ -103,10 +108,8 @@ if menu == "📝 Register Complaint":
                         if public_url:
                             public_image_urls.append(public_url)
 
-            # Data database me save karna
-            
-            # ⚠️ YAHAN APNE SERVICEMAN KA NUMBER FIX KAR DEIN (Bina +91 ke) ⚠️
-            fixed_serviceman_number = "9045447473" # <--- Isey mita kar apna asli number daalein
+            # ⚠️ YAHAN APNE SERVICEMAN KA NUMBER FIX KAR DEIN ⚠️
+            fixed_serviceman_number = "9045447473" 
             
             complaint_data = {
                 "id": complaint_id,
@@ -122,45 +125,23 @@ if menu == "📝 Register Complaint":
                 "serviceman_mobile": fixed_serviceman_number
             }
             
+            # FILE SAVE LOGIC FIXED
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
-                data.append(complaint_data)
-                f.seek(0)
+                
+            data.append(complaint_data)
+            
+            with open(DATA_FILE, 'w') as f:
                 json.dump(data, f, indent=4)
                 
             st.success(f"✅ Complaint Registered! Aapki Complaint ID hai: **{complaint_id}**")
-
             st.info("System processing messages...")
             
-            # ==========================================
-            # 1. SERVICEMAN/OWNER KO MESSAGE BHEJNA
-            # ==========================================
-            serv_msg_body = f"""*New Customer Complaint!* 🚨
-*ID:* {complaint_id}
-*Name:* {name}
-*Mobile:* {mobile}
-*Address:* {address}
-*Issue:* {issue}
-*Details:* {description}"""
+            serv_msg_body = f"""*New Customer Complaint!* 🚨\n*ID:* {complaint_id}\n*Name:* {name}\n*Mobile:* {mobile}\n*Address:* {address}\n*Issue:* {issue}\n*Details:* {description}"""
+            send_whatsapp_message(fixed_serviceman_number, serv_msg_body, public_image_urls)
 
-            serv_success, serv_response = send_whatsapp_message(
-                fixed_serviceman_number, 
-                serv_msg_body, 
-                public_image_urls
-            )
-
-            # ==========================================
-            # 2. CUSTOMER KO MESSAGE BHEJNA
-            # ==========================================
-            cust_msg_body = f"""Hello {name}, 👋
-
-Aapki complaint mil gayi hai. 🛠️
-*Complaint ID:* {complaint_id}
-*Issue:* {issue}
-
-Humara serviceman jald hi aapse sampark karega. Dhanyawad!"""
-
-            cust_success, cust_response = send_whatsapp_message(mobile, cust_msg_body)
+            cust_msg_body = f"""Hello {name}, 👋\n\nAapki complaint mil gayi hai. 🛠️\n*Complaint ID:* {complaint_id}\n*Issue:* {issue}\n\nHumara serviceman jald hi aapse sampark karega. Dhanyawad!"""
+            send_whatsapp_message(mobile, cust_msg_body)
 
 # -----------------------------------------------------
 # PAGE 2: SEARCH & UPDATE STATUS
@@ -217,7 +198,6 @@ elif menu == "🔍 Search & Update Status":
         
         new_status = st.selectbox("Is complaint ka naya status chunein:", status_options, index=current_index)
         
-        # Dono buttons ko aamne-saamne dikhane ke liye columns banaye hain
         col3, col4 = st.columns(2)
         
         with col3:
@@ -241,7 +221,6 @@ elif menu == "🔍 Search & Update Status":
                 with open(DATA_FILE, 'r') as f:
                     all_data = json.load(f)
                 
-                # Naya list banayenge jisme search ki hui ID nahi hogi (yani wo delete ho jayegi)
                 updated_data = [item for item in all_data if item['id'] != comp['id']]
                 
                 with open(DATA_FILE, 'w') as f:
@@ -250,25 +229,17 @@ elif menu == "🔍 Search & Update Status":
                 st.session_state.search_result = None
                 st.success(f"🗑️ Complaint **{comp['id']}** hamesha ke liye delete ho gayi hai! Page refresh kar lein.")
 
-
-            # -----------------------------------------------------
+# -----------------------------------------------------
 # PAGE 3: VIEW ALL RECORDS
 # -----------------------------------------------------
 elif menu == "📊 View All Record":
     st.title("📊 All Complaints Record")
     st.markdown("Yahan aap saari registered complaints ek sath ek table me dekh sakte hain.")
     
-    # JSON file se data read karna
     with open(DATA_FILE, 'r') as f:
         data = json.load(f)
         
     if not data:
         st.info("Abhi tak koi complaint register nahi hui hai.")
     else:
-        # Data ko sundar Table/Excel format me dikhana
         st.dataframe(data, use_container_width=True)
-        
-        
-        
-        
-        st.success(f"✅ Complaint {comp['id']} ka status update karke **{new_status}** kar diya gaya hai!")
