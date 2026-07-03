@@ -1,48 +1,87 @@
 import streamlit as st
 import json
 import os
+import requests
 import random
 from datetime import datetime
+from twilio.rest import Client
 
 # ==========================================
-# 0. INITIAL SETUP & MISSING VARIABLES
+# 0. BASIC SETUP & FOLDERS
 # ==========================================
 DATA_FILE = "complaints.json"
-UPLOAD_FOLDER = "uploaded_photos"
+UPLOAD_FOLDER = "uploads"
 
-# Agar folder nahi hai toh bana lo
+# Agar folder ya file nahi hai, toh create karein
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Agar data file nahi hai toh empty list ke sath bana lo
 if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, 'w') as f:
+    with open(DATA_FILE, "w") as f:
         json.dump([], f)
 
-# Dummy Functions for Missing Logic (Yahan apni asli API daalein)
-def upload_image_to_internet(local_path):
-    return f"https://example.com/{os.path.basename(local_path)}"
-
-def send_whatsapp_message(number, message, images=None):
-    # Yahan apni Twilio/WhatsApp logic daalein
-    return True, "Message sent successfully"
-
-# ==========================================
-# 1. HIDE STREAMLIT WATERMARKS
-# ==========================================
-hide_st_style = """
+# HIDE STREAMLIT WATERMARKS & GITHUB ICON
+st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden !important;}
     header {visibility: hidden !important;}
-    [data-testid="stToolbar"] {visibility: hidden;}
     [data-testid="stBottomBlock"] {display: none;}
+    [data-testid="stToolbar"] {visibility: hidden;}
     </style>
-"""
-st.markdown(hide_st_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
+
 
 # ==========================================
-# 2. SIDEBAR & ADMIN LOGIN
+# 1. API FUNCTIONS (IMGBB & TWILIO)
+# ==========================================
+def upload_image_to_internet(local_path):
+    """ImgBB API ka use karke image upload karega aur public URL dega"""
+    try:
+        api_key = st.secrets["IMGBB_API_KEY"]
+        url = "https://api.imgbb.com/1/upload"
+        with open(local_path, "rb") as file:
+            payload = {"key": api_key}
+            files = {"image": file}
+            response = requests.post(url, data=payload, files=files)
+            
+        if response.status_code == 200:
+            return response.json()['data']['url']
+    except Exception as e:
+        st.error(f"Image Upload Error: {e}")
+    return None
+
+def send_whatsapp_message(to_number, message_body, media_urls=None):
+    """Twilio API ka use karke WhatsApp par message bhejega"""
+    try:
+        sid = st.secrets["TWILIO_ACCOUNT_SID"]
+        token = st.secrets["TWILIO_AUTH_TOKEN"]
+        from_num = st.secrets["TWILIO_WHATSAPP_NUMBER"]
+        
+        client = Client(sid, token)
+        
+        # Number ko format karna (India ka +91 add karna agar nahi hai toh)
+        if not to_number.startswith("+"):
+            to_number = "+91" + to_number
+        to_whatsapp = f"whatsapp:{to_number}"
+        
+        kwargs = {
+            "from_": from_num,
+            "body": message_body,
+            "to": to_whatsapp
+        }
+        
+        if media_urls and len(media_urls) > 0:
+            kwargs["media_url"] = media_urls
+            
+        message = client.messages.create(**kwargs)
+        return True, message.sid
+    except Exception as e:
+        return False, str(e)
+
+
+# ==========================================
+# 2. SIDEBAR & ADMIN LOGIN (SECURITY LOCK)
 # ==========================================
 def generate_complaint_id():
     return f"CMP-{random.randint(100000, 999999)}"
@@ -51,6 +90,7 @@ st.sidebar.title("⚙️ Admin Panel")
 with st.sidebar.expander("🔐 Staff / Admin Login"):
     admin_pin = st.text_input("Enter PIN to unlock records", type="password")
 
+# Agar PIN 989761 hai, toh saare option khulenge, warna sirf Registration dikhega
 is_admin = (admin_pin == "989761") 
 
 if is_admin:
@@ -59,6 +99,7 @@ if is_admin:
 else:
     st.sidebar.info("Customer Mode: Sirf complaint darj kar sakte hain.")
     menu = "📝 Register Complaint"
+
 
 # -----------------------------------------------------
 # PAGE 1: REGISTER COMPLAINT (For Customers)
@@ -79,6 +120,7 @@ if menu == "📝 Register Complaint":
             
         description = st.text_area("Problem ko detail me batayen (Description)")
         
+        # Multiple photo upload (Max 10)
         st.markdown("📸 **Photos (Optional - Max 10)**")
         uploaded_files = st.file_uploader("Kharab product ki photo upload karein", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
         
@@ -107,9 +149,9 @@ if menu == "📝 Register Complaint":
                         public_url = upload_image_to_internet(local_path)
                         if public_url:
                             public_image_urls.append(public_url)
-
-            # ⚠️ YAHAN APNE SERVICEMAN KA NUMBER FIX KAR DEIN ⚠️
-            fixed_serviceman_number = "9045447473" 
+            
+            # ⚠️ YAHAN APNE SERVICEMAN KA NUMBER FIX KAR DEIN (Bina +91 ke) ⚠️
+            fixed_serviceman_number = "9045447473" # <--- Isey mita kar apna asli number daalein
             
             complaint_data = {
                 "id": complaint_id,
@@ -125,7 +167,7 @@ if menu == "📝 Register Complaint":
                 "serviceman_mobile": fixed_serviceman_number
             }
             
-            # FILE SAVE LOGIC FIXED
+            # Data database (JSON) me save karna
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
                 
@@ -135,13 +177,42 @@ if menu == "📝 Register Complaint":
                 json.dump(data, f, indent=4)
                 
             st.success(f"✅ Complaint Registered! Aapki Complaint ID hai: **{complaint_id}**")
-            st.info("System processing messages...")
+            st.info("System processing WhatsApp messages... Kripya thoda intezaar karein.")
             
-            serv_msg_body = f"""*New Customer Complaint!* 🚨\n*ID:* {complaint_id}\n*Name:* {name}\n*Mobile:* {mobile}\n*Address:* {address}\n*Issue:* {issue}\n*Details:* {description}"""
-            send_whatsapp_message(fixed_serviceman_number, serv_msg_body, public_image_urls)
+            # ==========================================
+            # 1. SERVICEMAN/OWNER KO MESSAGE BHEJNA
+            # ==========================================
+            serv_msg_body = f"""*New Customer Complaint!* 🚨
+*ID:* {complaint_id}
+*Name:* {name}
+*Mobile:* {mobile}
+*Address:* {address}
+*Issue:* {issue}
+*Details:* {description}"""
 
-            cust_msg_body = f"""Hello {name}, 👋\n\nAapki complaint mil gayi hai. 🛠️\n*Complaint ID:* {complaint_id}\n*Issue:* {issue}\n\nHumara serviceman jald hi aapse sampark karega. Dhanyawad!"""
-            send_whatsapp_message(mobile, cust_msg_body)
+            serv_success, serv_response = send_whatsapp_message(
+                fixed_serviceman_number, 
+                serv_msg_body, 
+                public_image_urls
+            )
+
+            # ==========================================
+            # 2. CUSTOMER KO MESSAGE BHEJNA
+            # ==========================================
+            cust_msg_body = f"""Hello {name}, 👋
+
+Aapki complaint mil gayi hai. 🛠️
+*Complaint ID:* {complaint_id}
+*Issue:* {issue}
+
+Humara serviceman jald hi aapse sampark karega. Dhanyawad!"""
+
+            cust_success, cust_response = send_whatsapp_message(mobile, cust_msg_body)
+            
+            if serv_success and cust_success:
+                st.success("✅ Messages sent successfully!")
+            else:
+                st.warning("⚠️ Data save ho gaya hai, par WhatsApp message bhejte waqt kuch dikkat aayi. Check your Twilio settings.")
 
 # -----------------------------------------------------
 # PAGE 2: SEARCH & UPDATE STATUS
@@ -191,6 +262,14 @@ elif menu == "🔍 Search & Update Status":
             st.write(f"**Description:** {comp['description']}")
             st.write(f"**Current Status:** {comp['status']}")
             
+        # Display Images if available
+        if comp.get('public_urls'):
+            st.markdown("### 📸 Complaint Images")
+            cols = st.columns(len(comp['public_urls']))
+            for idx, img_url in enumerate(comp['public_urls']):
+                with cols[idx]:
+                    st.image(img_url, width=150)
+
         st.markdown("### ⚙️ Manage Complaint")
         
         status_options = ["Pending 🔴", "Resolved ✅"]
@@ -229,6 +308,7 @@ elif menu == "🔍 Search & Update Status":
                 st.session_state.search_result = None
                 st.success(f"🗑️ Complaint **{comp['id']}** hamesha ke liye delete ho gayi hai! Page refresh kar lein.")
 
+
 # -----------------------------------------------------
 # PAGE 3: VIEW ALL RECORDS
 # -----------------------------------------------------
@@ -242,4 +322,10 @@ elif menu == "📊 View All Record":
     if not data:
         st.info("Abhi tak koi complaint register nahi hui hai.")
     else:
-        st.dataframe(data, use_container_width=True)
+        # Data ko sundar Table format me dikhana (local_files aur public_urls ko exclude karke taaki table clean dikhe)
+        clean_data = []
+        for item in data:
+            clean_item = {k: v for k, v in item.items() if k not in ["local_files", "public_urls"]}
+            clean_data.append(clean_item)
+            
+        st.dataframe(clean_data, use_container_width=True)
